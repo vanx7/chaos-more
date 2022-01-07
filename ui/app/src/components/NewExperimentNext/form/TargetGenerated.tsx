@@ -15,6 +15,7 @@
  *
  */
 import { AutocompleteMultipleField, LabelField, SelectField, Submit, TextField } from 'components/FormField'
+import { Button, Upload } from '@douyinfe/semi-ui'
 import { Env, clearNetworkTargetPods } from 'slices/experiments'
 import { Form, Formik, FormikErrors, FormikTouched, getIn, setIn } from 'formik'
 import { Kind, Spec } from '../data/types'
@@ -28,6 +29,7 @@ import Scope from './Scope'
 import Space from '@ui/mui-extends/esm/Space'
 import T from 'components/T'
 import basicData from '../data/basic'
+import styled from '@emotion/styled'
 
 interface TargetGeneratedProps {
   env: Env
@@ -167,6 +169,12 @@ const TargetGenerated: React.FC<TargetGeneratedProps> = ({ env, kind, data, vali
                 helperText={v.helperText}
                 options={v.items!}
               />
+            )
+          case 'upload':
+            return (
+              <Upload action="http://127.0.0.1:3000/api/experiments/upload">
+                <Button theme="light">点击上传</Button>
+              </Upload>
             )
           default:
             return null

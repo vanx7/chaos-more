@@ -509,6 +509,10 @@ definitions:
         $ref: '#/definitions/v1alpha1.DNSChaosSpec'
         description: +optional
         type: object
+      ebpfChaos:
+        $ref: '#/definitions/v1alpha1.EBPFChaosSpec'
+        description: +optional
+        type: object
       gcpChaos:
         $ref: '#/definitions/v1alpha1.GCPChaosSpec'
         description: +optional
@@ -544,6 +548,10 @@ definitions:
         type: object
       podChaos:
         $ref: '#/definitions/v1alpha1.PodChaosSpec'
+        description: +optional
+        type: object
+      redisChaos:
+        $ref: '#/definitions/v1alpha1.RedisChaosSpec'
         description: +optional
         type: object
       schedule:
@@ -710,6 +718,54 @@ definitions:
         description: +optional
         type: string
       duplicate:
+        type: string
+    type: object
+  v1alpha1.EBPFChaosSpec:
+    properties:
+      action:
+        description: Action defines the specific pod ebpf action.
+        type: string
+      containerNames:
+        description: |-
+          ContainerNames indicates list of the name of affected container.
+          If not set, all containers will be injected
+          +optional
+        items:
+          type: string
+        type: array
+      data:
+        description: |-
+          Data is ELF 64-bit LSB relocatable, eBPF with base64 encode
+          use it should first decode it with base64
+        type: string
+      duration:
+        description: |-
+          Duration represents the duration of the chaos action.
+          It is required when the action is `PodFailureAction`.
+          A duration string is a possibly signed sequence of
+          decimal numbers, each with optional fraction and a unit suffix,
+          such as "300ms", "-1.5h" or "2h45m".
+          Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
+          +optional
+        type: string
+      mode:
+        description: |-
+          Mode defines the mode to run chaos action.
+          Supported mode: one / all / fixed / fixed-percent / random-max-percent
+          +kubebuilder:validation:Enum=one;all;fixed;fixed-percent;random-max-percent
+        type: string
+      selector:
+        $ref: '#/definitions/v1alpha1.PodSelectorSpec'
+        description: Selector is used to select pods that are used to inject chaos
+          action.
+        type: object
+      value:
+        description: |-
+          Value is required when the mode is set to `FixedMode` / `FixedPercentMode` / `RandomMaxPercentMode`.
+          If `FixedMode`, provide an integer of pods to do chaos action.
+          If `FixedPercentMode`, provide a number from 0-100 to specify the percent of pods the server can do chaos action.
+          IF `RandomMaxPercentMode`,  provide a number from 0-100 to specify the max percent of pods to do chaos action
+          +optional
         type: string
     type: object
   v1alpha1.FailKernRequest:
@@ -1966,6 +2022,59 @@ definitions:
         description: the signal number to send
         type: integer
     type: object
+  v1alpha1.RedisChaosSpec:
+    properties:
+      action:
+        description: |-
+          Action defines the specific redis chaos action.
+          Supported action: redis-drop / redis-delay / redis-empty-query
+          Default action: redis-drop
+          +kubebuilder:validation:Enum=redis-drop;redis-delay;redis-empty-query
+        type: string
+      containerNames:
+        description: |-
+          ContainerNames indicates list of the name of affected container.
+          If not set, all containers will be injected
+          +optional
+        items:
+          type: string
+        type: array
+      duration:
+        description: |-
+          Duration represents the duration of the chaos action.
+          It is required when the action is `PodFailureAction`.
+          A duration string is a possibly signed sequence of
+          decimal numbers, each with optional fraction and a unit suffix,
+          such as "300ms", "-1.5h" or "2h45m".
+          Valid time units are "ns", "us" (or "µs"), "ms", "s", "m", "h".
+          +optional
+        type: string
+      latency:
+        description: |-
+          GracePeriod is used in pod-kill action. It represents the duration in seconds before the pod should be deleted.
+          Value must be non-negative integer. The default value is zero that indicates delete immediately.
+          +optional
+        type: integer
+      mode:
+        description: |-
+          Mode defines the mode to run chaos action.
+          Supported mode: one / all / fixed / fixed-percent / random-max-percent
+          +kubebuilder:validation:Enum=one;all;fixed;fixed-percent;random-max-percent
+        type: string
+      selector:
+        $ref: '#/definitions/v1alpha1.PodSelectorSpec'
+        description: Selector is used to select pods that are used to inject chaos
+          action.
+        type: object
+      value:
+        description: |-
+          Value is required when the mode is set to `FixedMode` / `FixedPercentMode` / `RandomMaxPercentMode`.
+          If `FixedMode`, provide an integer of pods to do chaos action.
+          If `FixedPercentMode`, provide a number from 0-100 to specify the percent of pods the server can do chaos action.
+          IF `RandomMaxPercentMode`,  provide a number from 0-100 to specify the max percent of pods to do chaos action
+          +optional
+        type: string
+    type: object
   v1alpha1.ReorderSpec:
     properties:
       correlation:
@@ -2000,6 +2109,10 @@ definitions:
         type: string
       dnsChaos:
         $ref: '#/definitions/v1alpha1.DNSChaosSpec'
+        description: +optional
+        type: object
+      ebpfChaos:
+        $ref: '#/definitions/v1alpha1.EBPFChaosSpec'
         description: +optional
         type: object
       gcpChaos:
@@ -2037,6 +2150,10 @@ definitions:
         type: object
       podChaos:
         $ref: '#/definitions/v1alpha1.PodChaosSpec'
+        description: +optional
+        type: object
+      redisChaos:
+        $ref: '#/definitions/v1alpha1.RedisChaosSpec'
         description: +optional
         type: object
       schedule:
@@ -2207,6 +2324,10 @@ definitions:
         $ref: '#/definitions/v1alpha1.DNSChaosSpec'
         description: +optional
         type: object
+      ebpfChaos:
+        $ref: '#/definitions/v1alpha1.EBPFChaosSpec'
+        description: +optional
+        type: object
       gcpChaos:
         $ref: '#/definitions/v1alpha1.GCPChaosSpec'
         description: +optional
@@ -2239,6 +2360,10 @@ definitions:
         type: object
       podChaos:
         $ref: '#/definitions/v1alpha1.PodChaosSpec'
+        description: +optional
+        type: object
+      redisChaos:
+        $ref: '#/definitions/v1alpha1.RedisChaosSpec'
         description: +optional
         type: object
       schedule:

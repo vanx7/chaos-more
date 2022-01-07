@@ -19,6 +19,7 @@ import Archives from 'pages/Archives'
 import Dashboard from 'pages/Dashboard'
 import Events from 'pages/Events'
 import Experiment from 'pages/Experiments/Single'
+import ExperimentInspect from 'pages/Experiments/Inspect'
 import Experiments from 'pages/Experiments'
 import NewExperiment from 'pages/Experiments/New'
 import NewSchedule from 'pages/Schedules/New'
@@ -70,6 +71,10 @@ const routes: RouteProps[] = [
   {
     element: <Experiment />,
     path: '/experiments/:uuid',
+  },
+  {
+    element: <ExperimentInspect />,
+    path: '/experiments/:uuid/inspect',
   },
   {
     element: <Events />,

@@ -16,9 +16,28 @@
 package experiment
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	chaosdaemonclient "github.com/chaos-mesh/chaos-mesh/pkg/chaosdaemon/client"
+	"github.com/chaos-mesh/chaos-mesh/pkg/chaosdaemon/pb"
+	grpcUtils "github.com/chaos-mesh/chaos-mesh/pkg/grpc"
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/pcap"
+	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"io"
+	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
 	"net/http"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -42,6 +61,8 @@ import (
 	u "github.com/chaos-mesh/chaos-mesh/pkg/dashboard/apiserver/utils"
 	"github.com/chaos-mesh/chaos-mesh/pkg/dashboard/core"
 	"github.com/chaos-mesh/chaos-mesh/pkg/status"
+
+	cconf "github.com/chaos-mesh/chaos-mesh/controllers/config"
 )
 
 var log = u.Log.WithName("experiments")
@@ -76,10 +97,13 @@ func Register(r *gin.RouterGroup, s *Service) {
 	endpoint.POST("", s.create)
 	endpoint.GET("/:uid", s.get)
 	endpoint.DELETE("/:uid", s.delete)
+	endpoint.GET("/:uid/observe", s.observe)
+	endpoint.GET("/:uid/log", s.log)
 	endpoint.DELETE("", s.batchDelete)
 	endpoint.PUT("/pause/:uid", s.pause)
 	endpoint.PUT("/start/:uid", s.start)
 	endpoint.GET("/state", s.state)
+	endpoint.POST("/upload", s.upload)
 }
 
 // Experiment defines the information of an experiment.
@@ -627,4 +651,492 @@ func (s *Service) state(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, allChaosStatus)
+}
+
+var upGrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+type Tail struct {
+	Finished      bool
+	conn          *websocket.Conn
+	closed        chan bool
+	namespace     string
+	podNames      []string
+	containerName string
+	timestamps    bool
+
+	enableLogName bool
+
+	currentReqId string
+	mu           sync.Mutex
+}
+
+type TailRequest struct {
+	Id            string  `json:"id"`
+	TailLines     *int64  `json:"tail_lines"`
+	ContainerName *string `json:"container_name"`
+	SinceTime     *time.Time
+	Follow        bool
+}
+
+type LogMessageType string
+
+const (
+	LogMessageTypeReplace LogMessageType = "replace"
+	LogMessageTypeAppend  LogMessageType = "append"
+)
+
+type logMessage struct {
+	ReqId string         `json:"req_id"`
+	Type  LogMessageType `json:"type"`
+	Items []string       `json:"items"`
+}
+
+// NewTail creates new Tail object
+func NewTail(conn *websocket.Conn, namespace string, podNames []string, containerName string, timestamps, enableLogName bool) *Tail {
+	return &Tail{
+		Finished:      false,
+		conn:          conn,
+		closed:        make(chan bool, 1),
+		namespace:     namespace,
+		podNames:      podNames,
+		containerName: containerName,
+		timestamps:    timestamps,
+		enableLogName: enableLogName,
+	}
+}
+
+func (t *Tail) Write(msg []byte) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.conn.WriteMessage(websocket.TextMessage, msg)
+}
+
+// Start starts Pod log streaming
+func (t *Tail) Start(ctx context.Context, clientset *kubernetes.Clientset) error {
+	go func() {
+		<-ctx.Done()
+		t.closed <- true
+	}()
+
+	reqCh := make(chan *TailRequest, 1)
+
+	errCh := make(chan error, 1)
+
+	go func() {
+		for {
+			mt, p, err := t.conn.ReadMessage()
+
+			if err != nil {
+				errCh <- err
+				return
+			}
+
+			if mt == websocket.CloseMessage || mt == -1 {
+				t.closed <- true
+				return
+			}
+
+			req := TailRequest{}
+			err = json.Unmarshal(p, &req)
+
+			if err != nil {
+				logrus.Errorf("marshal tail msg: %s", err.Error())
+				continue
+			}
+
+			reqCh <- &req
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-t.closed:
+				t.closed <- true
+				break
+			default:
+			}
+
+			req := <-reqCh
+			t.currentReqId = req.Id
+
+			logOptions := &v1.PodLogOptions{
+				Container:  t.containerName,
+				TailLines:  req.TailLines,
+				Timestamps: t.timestamps,
+			}
+
+			if req.ContainerName != nil {
+				logOptions.Container = *req.ContainerName
+			}
+
+			if req.SinceTime != nil {
+				logOptions.SinceTime = &metav1.Time{
+					Time: *req.SinceTime,
+				}
+			}
+
+			now := time.Now()
+
+			for _, podName := range t.podNames {
+				podName := podName
+
+				rs, err := clientset.CoreV1().Pods(t.namespace).GetLogs(podName, logOptions).Stream(ctx)
+				if err != nil {
+					errCh <- err
+					return
+				}
+
+				err = func() error {
+					defer rs.Close()
+					buf := new(bytes.Buffer)
+					_, err = io.Copy(buf, rs)
+					if err != nil {
+						return errors.Wrap(err, "error in copy information from podLogs to buf")
+					}
+					str := buf.String()
+					lines := strings.Split(str, "\n")
+					res := make([]string, 0, len(lines))
+					for _, line := range lines {
+						if t.enableLogName {
+							line = fmt.Sprintf("[%s] [%s] %s", podName, t.containerName, line)
+						}
+						res = append(res, line)
+					}
+					msg := logMessage{
+						ReqId: req.Id,
+						Type:  LogMessageTypeReplace,
+						Items: res,
+					}
+					msgStr, _ := json.Marshal(&msg)
+					_ = t.Write(msgStr)
+					if req.Follow {
+						go func() {
+							logOptions.Follow = true
+							logOptions.TailLines = nil
+							logOptions.SinceTime = &metav1.Time{
+								Time: now,
+							}
+							rs, err := clientset.CoreV1().Pods(t.namespace).GetLogs(podName, logOptions).Stream(ctx)
+							if err != nil {
+								_, _ = fmt.Fprintln(os.Stderr, err)
+								return
+							}
+							defer rs.Close()
+							sc := bufio.NewScanner(rs)
+							for sc.Scan() {
+								select {
+								case <-t.closed:
+									t.closed <- true
+									break
+								default:
+								}
+
+								if t.currentReqId != req.Id {
+									break
+								}
+
+								content := sc.Text()
+								if t.enableLogName {
+									content = fmt.Sprintf("[%s] [%s] %s", podName, t.containerName, content)
+								}
+								msg := logMessage{
+									ReqId: req.Id,
+									Type:  LogMessageTypeAppend,
+									Items: []string{
+										content,
+									},
+								}
+								msgStr, _ := json.Marshal(&msg)
+								_ = t.Write(msgStr)
+							}
+						}()
+					}
+					return nil
+				}()
+				if err != nil {
+					errCh <- err
+				}
+			}
+		}
+	}()
+
+	return <-errCh
+}
+
+// Finish finishes Pod log streaming with Pod completion
+func (t *Tail) Finish() {
+	t.Finished = true
+}
+
+// Delete finishes Pod log streaming with Pod deletion
+func (t *Tail) Delete() {
+	t.closed <- true
+}
+
+// @Summary Get the status of all experiments.
+// @Description Get the status of all experiments.
+// @Tags experiments
+// @Produce json
+// @Param namespace query string false "namespace"
+// @Success 200 {object} status.AllChaosStatus
+// @Failure 400 {object} utils.APIError
+// @Failure 500 {object} utils.APIError
+// @Router /experiments/state [get]
+func (s *Service) watch(c *gin.Context) {
+	var (
+		exp *core.Experiment
+	)
+
+	var err error
+	uid := c.Param("uid")
+	if exp, err = s.archive.FindByUID(context.Background(), uid); err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			u.SetAPIError(c, u.ErrNotFound.New("Experiment "+uid+" not found"))
+		} else {
+			u.SetAPIError(c, u.ErrInternalServer.WrapWithNoMessage(err))
+		}
+
+		return
+	}
+
+	//ns, name, kind := exp.Namespace, exp.Name, exp.Kind
+	ns := exp.Namespace
+	//if chaosKind, ok := v1alpha1.AllKinds()[kind]; ok {
+	//	conSelector = s.findChaosSelector(c, kubeCli, types.NamespacedName{Namespace: ns, Name: name}, chaosKind.SpawnObject())
+	//} else {
+	//	u.SetAPIError(c, u.ErrBadRequest.New("Kind "+kind+" is not supported"))
+	//	return
+	//}
+
+	ws, err := upGrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		ws.WriteJSON(err)
+		return
+	}
+	defer ws.Close()
+	log.Info("upgrade websocket")
+
+	var kubeConfigPath string
+	if kubeConfigPath == "" {
+		kubeConfigPath = os.Getenv("KUBECONFIG")
+	}
+	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+	if err != nil {
+		ws.WriteJSON(err)
+		return
+	}
+
+	cli, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		ws.WriteJSON(err)
+		return
+	}
+	log.Info("create cli, query pods", "ns", ns)
+	podLists, err := cli.CoreV1().Pods(ns).List(c, metav1.ListOptions{LabelSelector: "app=redis-client"})
+	if err != nil {
+		ws.WriteJSON(err)
+		return
+	}
+	log.Info("list pods", "len", len(podLists.Items))
+	t := NewTail(ws, ns, []string{podLists.Items[0].Name}, "main", true, true)
+
+	err = t.Start(c, cli)
+	if err != nil {
+		log.Info("tail failed", "err", err.Error())
+	}
+	return
+}
+
+// @Summary Get the status of all experiments.
+// @Description Get the status of all experiments.
+// @Tags experiments
+// @Produce json
+// @Param namespace query string false "namespace"
+// @Success 200 {object} status.AllChaosStatus
+// @Failure 400 {object} utils.APIError
+// @Failure 500 {object} utils.APIError
+// @Router /experiments/state [get]
+func (s *Service) log(c *gin.Context) {
+	var (
+		exp *core.Experiment
+		err error
+	)
+
+	header := c.Request.Header
+
+	uid := c.Param("uid")
+	if exp, err = s.archive.FindByUID(context.Background(), uid); err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			u.SetAPIError(c, u.ErrNotFound.New("Experiment "+uid+" not found"))
+		} else {
+			u.SetAPIError(c, u.ErrInternalServer.WrapWithNoMessage(err))
+		}
+
+		return
+	}
+
+	//ns, name, kind := exp.Namespace, exp.Name, exp.Kind
+	ns := exp.Namespace
+
+	data := map[string]interface{}{}
+	err = json.Unmarshal([]byte(exp.Experiment), &data)
+	if err != nil {
+		return
+	}
+
+	spec, ok, err := unstructured.NestedMap(data, "spec", "selector", "labelSelectors")
+	if !ok || err != nil {
+		return
+	}
+	selector := map[string]string{}
+	for k, v := range spec {
+		selector[k] = fmt.Sprintf("%v", v)
+	}
+	cli, err := clientpool.ExtractTokenAndGetRestClient(header)
+	if err != nil {
+		return
+	}
+
+	podLists, err := cli.CoreV1().Pods(ns).List(c, metav1.ListOptions{LabelSelector: labels.FormatLabels(selector)})
+	if err != nil {
+		return
+	}
+	if len(podLists.Items) == 0 {
+		return
+	}
+	pod := podLists.Items[0]
+	var lines int64 = 50
+	req := cli.CoreV1().Pods(ns).GetLogs(pod.Name, &v1.PodLogOptions{TailLines: &lines})
+	podLogs, err := req.Stream(c)
+	if err != nil {
+		return
+	}
+	defer podLogs.Close()
+
+	buf, err := ioutil.ReadAll(podLogs)
+	if err != nil {
+		return
+	}
+
+	c.Writer.Write(buf)
+	return
+}
+
+// @Summary Get the status of all experiments.
+// @Description Get the status of all experiments.
+// @Tags experiments
+// @Produce json
+// @Param namespace query string false "namespace"
+// @Success 200 {object} status.AllChaosStatus
+// @Failure 400 {object} utils.APIError
+// @Failure 500 {object} utils.APIError
+// @Router /experiments/state [get]
+func (s *Service) observeLocal(c *gin.Context) {
+	handle, err := pcap.OpenOffline("/Users/joker/Desktop/tidb-hackathon-2021/dump-redis-simple.pcap")
+	if err != nil {
+		c.String(500, err.Error())
+	}
+	defer handle.Close()
+
+	// Loop through packets in file
+	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
+	var packets []string
+	for packet := range packetSource.Packets() {
+		packets = append(packets, fmt.Sprintf("%s -> %s, \n%",
+			packet.NetworkLayer().NetworkFlow().Src().String(),
+			packet.NetworkLayer().NetworkFlow().Dst().String(),
+			packet.String()))
+	}
+	c.JSON(0, obsStr{Tc: packets})
+}
+
+type obsTc struct {
+	Src string
+	Dst string
+	TS  string
+	Raw string
+}
+
+type obsStr struct {
+	Tc   []string `json:"tc"`
+	Func []string `json:"func"`
+}
+
+func (s *Service) upload(c *gin.Context) {
+	c.Writer.Write([]byte("adsfhlkahdfllashfsd"))
+}
+
+func (s *Service) observe(c *gin.Context) {
+	var (
+		exp *core.Experiment
+		err error
+	)
+	uid := c.Param("uid")
+	if exp, err = s.archive.FindByUID(context.Background(), uid); err != nil {
+		if gorm.IsRecordNotFoundError(err) {
+			u.SetAPIError(c, u.ErrNotFound.New("Experiment "+uid+" not found"))
+		} else {
+			u.SetAPIError(c, u.ErrInternalServer.WrapWithNoMessage(err))
+		}
+
+		return
+	}
+
+	//ns, name, kind := exp.Namespace, exp.Name, exp.Kind
+	ns := exp.Namespace
+
+	data := map[string]interface{}{}
+	err = json.Unmarshal([]byte(exp.Experiment), &data)
+	if err != nil {
+		return
+	}
+
+	spec, ok, err := unstructured.NestedMap(data, "spec", "selector", "labelSelectors")
+	if !ok || err != nil {
+		return
+	}
+	selector := map[string]string{}
+	for k, v := range spec {
+		selector[k] = fmt.Sprintf("%v", v)
+	}
+	cli, err := clientpool.ExtractTokenAndGetRestClient(c.Request.Header)
+	if err != nil {
+		return
+	}
+
+	podLists, err := cli.CoreV1().Pods(ns).List(c, metav1.ListOptions{LabelSelector: labels.FormatLabels(selector)})
+	if err != nil {
+		return
+	}
+	if len(podLists.Items) == 0 {
+		return
+	}
+	pod := podLists.Items[0]
+
+	daemonIP := "127.0.0.1"
+	builder := grpcUtils.Builder(daemonIP, cconf.ControllerCfg.ChaosDaemonPort).WithDefaultTimeout()
+
+	if cconf.ControllerCfg.TLSConfig.ChaosMeshCACert != "" {
+		builder.TLSFromFile(cconf.ControllerCfg.TLSConfig.ChaosMeshCACert, cconf.ControllerCfg.TLSConfig.ChaosDaemonClientCert, cconf.ControllerCfg.TLSConfig.ChaosDaemonClientKey)
+	} else {
+		builder.Insecure()
+	}
+	cc, err := builder.Build()
+	if err != nil {
+		c.Writer.Write([]byte(err.Error()))
+		return
+	}
+	containerId := pod.Status.ContainerStatuses[0].ContainerID
+	resp, err := chaosdaemonclient.New(cc).CommonObserve(c, &pb.CommonObserveRequest{ContainerId: containerId})
+	if err != nil {
+		c.Writer.Write([]byte(err.Error()))
+		return
+	}
+	c.JSON(0, resp)
+	return
 }

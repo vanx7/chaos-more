@@ -28,11 +28,15 @@ type ChaosImpl interface {
 	Recover(ctx context.Context, index int, records []*v1alpha1.Record, obj v1alpha1.InnerObject) (v1alpha1.Phase, error)
 }
 
+type ObserveImpl interface {
+	Watch(ctx context.Context, index int, records []*v1alpha1.Record, obj v1alpha1.InnerObject) (v1alpha1.Phase, error)
+}
+
 type ChaosImplPair struct {
 	Name   string
 	Object v1alpha1.InnerObjectWithSelector
 	Impl   ChaosImpl
-
+	Observe ObserveImpl
 	ObjectList v1alpha1.GenericChaosList
 	Controlls  []client.Object
 }

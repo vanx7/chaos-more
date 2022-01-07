@@ -38,3 +38,14 @@ export interface ExperimentSingle extends Experiment {
   failed_message: string
   kube_object: any
 }
+
+export interface ObserveExpTC {
+  src: string
+  dst: string
+  ts: string
+  raw: string
+}
+export interface ObserveExp {
+  tc: string[]
+  func: string[]
+}

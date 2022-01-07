@@ -304,6 +304,139 @@ func (in *DNSChaos) Default() {
 	gw.Default(in)
 }
 
+const KindEBPFChaos = "EBPFChaos"
+
+// IsDeleted returns whether this resource has been deleted
+func (in *EBPFChaos) IsDeleted() bool {
+	return !in.DeletionTimestamp.IsZero()
+}
+
+// IsPaused returns whether this resource has been paused
+func (in *EBPFChaos) IsPaused() bool {
+	if in.Annotations == nil || in.Annotations[PauseAnnotationKey] != "true" {
+		return false
+	}
+	return true
+}
+
+// GetObjectMeta would return the ObjectMeta for chaos
+func (in *EBPFChaos) GetObjectMeta() *metav1.ObjectMeta {
+	return &in.ObjectMeta
+}
+
+// GetDuration would return the duration for chaos
+func (in *EBPFChaosSpec) GetDuration() (*time.Duration, error) {
+	if in.Duration == nil {
+		return nil, nil
+	}
+	duration, err := time.ParseDuration(string(*in.Duration))
+	if err != nil {
+		return nil, err
+	}
+	return &duration, nil
+}
+
+// GetStatus returns the status
+func (in *EBPFChaos) GetStatus() *ChaosStatus {
+	return &in.Status.ChaosStatus
+}
+
+// GetSpecAndMetaString returns a string including the meta and spec field of this chaos object.
+func (in *EBPFChaos) GetSpecAndMetaString() (string, error) {
+	spec, err := json.Marshal(in.Spec)
+	if err != nil {
+		return "", err
+	}
+
+	meta := in.ObjectMeta.DeepCopy()
+	meta.SetResourceVersion("")
+	meta.SetGeneration(0)
+
+	return string(spec) + meta.String(), nil
+}
+
+// +kubebuilder:object:root=true
+
+// EBPFChaosList contains a list of EBPFChaos
+type EBPFChaosList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []EBPFChaos `json:"items"`
+}
+
+func (in *EBPFChaosList) DeepCopyList() GenericChaosList {
+	return in.DeepCopy()
+}
+
+// ListChaos returns a list of chaos
+func (in *EBPFChaosList) ListChaos() []GenericChaos {
+	var result []GenericChaos
+	for _, item := range in.Items {
+		item := item
+		result = append(result, &item)
+	}
+	return result
+}
+
+func (in *EBPFChaos) DurationExceeded(now time.Time) (bool, time.Duration, error) {
+	duration, err := in.Spec.GetDuration()
+	if err != nil {
+		return false, 0, err
+	}
+
+	if duration != nil {
+		stopTime := in.GetCreationTimestamp().Add(*duration)
+		if stopTime.Before(now) {
+			return true, 0, nil
+		}
+
+		return false, stopTime.Sub(now), nil
+	}
+
+	return false, 0, nil
+}
+
+func (in *EBPFChaos) IsOneShot() bool {
+	return false
+}
+
+var EBPFChaosWebhookLog = logf.Log.WithName("EBPFChaos-resource")
+
+func (in *EBPFChaos) ValidateCreate() error {
+	EBPFChaosWebhookLog.Info("validate create", "name", in.Name)
+	return in.Validate()
+}
+
+// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+func (in *EBPFChaos) ValidateUpdate(old runtime.Object) error {
+	EBPFChaosWebhookLog.Info("validate update", "name", in.Name)
+	if !reflect.DeepEqual(in.Spec, old.(*EBPFChaos).Spec) {
+		return ErrCanNotUpdateChaos
+	}
+	return in.Validate()
+}
+
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+func (in *EBPFChaos) ValidateDelete() error {
+	EBPFChaosWebhookLog.Info("validate delete", "name", in.Name)
+
+	// Nothing to do?
+	return nil
+}
+
+var _ webhook.Validator = &EBPFChaos{}
+
+func (in *EBPFChaos) Validate() error {
+	errs := gw.Validate(in)
+	return gw.Aggregate(errs)
+}
+
+var _ webhook.Defaulter = &EBPFChaos{}
+
+func (in *EBPFChaos) Default() {
+	gw.Default(in)
+}
+
 const KindGCPChaos = "GCPChaos"
 
 // IsDeleted returns whether this resource has been deleted
@@ -1523,6 +1656,143 @@ func (in *PodNetworkChaos) Default() {
 	gw.Default(in)
 }
 
+const KindRedisChaos = "RedisChaos"
+
+// IsDeleted returns whether this resource has been deleted
+func (in *RedisChaos) IsDeleted() bool {
+	return !in.DeletionTimestamp.IsZero()
+}
+
+// IsPaused returns whether this resource has been paused
+func (in *RedisChaos) IsPaused() bool {
+	if in.Annotations == nil || in.Annotations[PauseAnnotationKey] != "true" {
+		return false
+	}
+	return true
+}
+
+// GetObjectMeta would return the ObjectMeta for chaos
+func (in *RedisChaos) GetObjectMeta() *metav1.ObjectMeta {
+	return &in.ObjectMeta
+}
+
+// GetDuration would return the duration for chaos
+func (in *RedisChaosSpec) GetDuration() (*time.Duration, error) {
+	if in.Duration == nil {
+		return nil, nil
+	}
+	duration, err := time.ParseDuration(string(*in.Duration))
+	if err != nil {
+		return nil, err
+	}
+	return &duration, nil
+}
+
+// GetStatus returns the status
+func (in *RedisChaos) GetStatus() *ChaosStatus {
+	return &in.Status.ChaosStatus
+}
+
+// GetSpecAndMetaString returns a string including the meta and spec field of this chaos object.
+func (in *RedisChaos) GetSpecAndMetaString() (string, error) {
+	spec, err := json.Marshal(in.Spec)
+	if err != nil {
+		return "", err
+	}
+
+	meta := in.ObjectMeta.DeepCopy()
+	meta.SetResourceVersion("")
+	meta.SetGeneration(0)
+
+	return string(spec) + meta.String(), nil
+}
+
+// +kubebuilder:object:root=true
+
+// RedisChaosList contains a list of RedisChaos
+type RedisChaosList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []RedisChaos `json:"items"`
+}
+
+func (in *RedisChaosList) DeepCopyList() GenericChaosList {
+	return in.DeepCopy()
+}
+
+// ListChaos returns a list of chaos
+func (in *RedisChaosList) ListChaos() []GenericChaos {
+	var result []GenericChaos
+	for _, item := range in.Items {
+		item := item
+		result = append(result, &item)
+	}
+	return result
+}
+
+func (in *RedisChaos) DurationExceeded(now time.Time) (bool, time.Duration, error) {
+	duration, err := in.Spec.GetDuration()
+	if err != nil {
+		return false, 0, err
+	}
+
+	if duration != nil {
+		stopTime := in.GetCreationTimestamp().Add(*duration)
+		if stopTime.Before(now) {
+			return true, 0, nil
+		}
+
+		return false, stopTime.Sub(now), nil
+	}
+
+	return false, 0, nil
+}
+
+func (in *RedisChaos) IsOneShot() bool {
+	if in.Spec.Action==RedisDropAction || in.Spec.Action==RedisDelayAction ||  in.Spec.Action==RedisEmptyQueryAction {
+		return true
+	}
+
+	return false
+}
+
+var RedisChaosWebhookLog = logf.Log.WithName("RedisChaos-resource")
+
+func (in *RedisChaos) ValidateCreate() error {
+	RedisChaosWebhookLog.Info("validate create", "name", in.Name)
+	return in.Validate()
+}
+
+// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
+func (in *RedisChaos) ValidateUpdate(old runtime.Object) error {
+	RedisChaosWebhookLog.Info("validate update", "name", in.Name)
+	if !reflect.DeepEqual(in.Spec, old.(*RedisChaos).Spec) {
+		return ErrCanNotUpdateChaos
+	}
+	return in.Validate()
+}
+
+// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
+func (in *RedisChaos) ValidateDelete() error {
+	RedisChaosWebhookLog.Info("validate delete", "name", in.Name)
+
+	// Nothing to do?
+	return nil
+}
+
+var _ webhook.Validator = &RedisChaos{}
+
+func (in *RedisChaos) Validate() error {
+	errs := gw.Validate(in)
+	return gw.Aggregate(errs)
+}
+
+var _ webhook.Defaulter = &RedisChaos{}
+
+func (in *RedisChaos) Default() {
+	gw.Default(in)
+}
+
 const KindStressChaos = "StressChaos"
 
 // IsDeleted returns whether this resource has been deleted
@@ -1803,6 +2073,12 @@ func init() {
 		list:  &DNSChaosList{},
 	})
 
+	SchemeBuilder.Register(&EBPFChaos{}, &EBPFChaosList{})
+	all.register(KindEBPFChaos, &ChaosKind{
+		chaos: &EBPFChaos{},
+		list:  &EBPFChaosList{},
+	})
+
 	SchemeBuilder.Register(&GCPChaos{}, &GCPChaosList{})
 	all.register(KindGCPChaos, &ChaosKind{
 		chaos: &GCPChaos{},
@@ -1859,6 +2135,12 @@ func init() {
 
 	SchemeBuilder.Register(&PodNetworkChaos{}, &PodNetworkChaosList{})
 
+	SchemeBuilder.Register(&RedisChaos{}, &RedisChaosList{})
+	all.register(KindRedisChaos, &ChaosKind{
+		chaos: &RedisChaos{},
+		list:  &RedisChaosList{},
+	})
+
 	SchemeBuilder.Register(&StressChaos{}, &StressChaosList{})
 	all.register(KindStressChaos, &ChaosKind{
 		chaos: &StressChaos{},
@@ -1880,6 +2162,11 @@ func init() {
 	allScheduleItem.register(KindDNSChaos, &ChaosKind{
 		chaos: &DNSChaos{},
 		list:  &DNSChaosList{},
+	})
+
+	allScheduleItem.register(KindEBPFChaos, &ChaosKind{
+		chaos: &EBPFChaos{},
+		list:  &EBPFChaosList{},
 	})
 
 	allScheduleItem.register(KindGCPChaos, &ChaosKind{
@@ -1920,6 +2207,11 @@ func init() {
 	allScheduleItem.register(KindPodChaos, &ChaosKind{
 		chaos: &PodChaos{},
 		list:  &PodChaosList{},
+	})
+
+	allScheduleItem.register(KindRedisChaos, &ChaosKind{
+		chaos: &RedisChaos{},
+		list:  &RedisChaosList{},
 	})
 
 	allScheduleItem.register(KindStressChaos, &ChaosKind{

@@ -40,7 +40,10 @@ import (
 	"github.com/chaos-mesh/chaos-mesh/pkg/metrics"
 )
 
-var log = ctrl.Log.WithName("chaos-daemon-server")
+var (
+	log       = ctrl.Log.WithName("chaos-daemon-server")
+	daemonMap map[string]chan struct{}
+)
 
 //go:generate protoc -I pb pb/chaosdaemon.proto --go_out=plugins=grpc:pb
 

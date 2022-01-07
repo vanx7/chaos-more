@@ -19,6 +19,7 @@ import { ReactComponent as AWSIcon } from 'images/chaos/aws.svg'
 import { ReactComponent as ClockIcon } from 'images/chaos/time.svg'
 import { ReactComponent as DNSIcon } from 'images/chaos/dns.svg'
 import { ReactComponent as DiskIcon } from 'images/chaos/disk.svg'
+import { ReactComponent as EbpfIcon } from 'images/chaos/ebpf.svg'
 import { ExperimentKind } from 'components/NewExperiment/types'
 import { ReactComponent as FileSystemIOIcon } from 'images/chaos/io.svg'
 import { ReactComponent as GCPIcon } from 'images/chaos/gcp.svg'
@@ -30,6 +31,7 @@ import { ReactComponent as NetworkIcon } from 'images/chaos/network.svg'
 import { ReactComponent as PhysicIcon } from 'images/physic.svg'
 import { ReactComponent as PodLifecycleIcon } from 'images/chaos/pod.svg'
 import { ReactComponent as ProcessIcon } from 'images/chaos/process.svg'
+import { ReactComponent as RedisIcon } from 'images/chaos/redis.svg'
 import { ReactComponent as StressIcon } from 'images/chaos/stress.svg'
 import { SvgIcon } from '@mui/material'
 import T from 'components/T'
@@ -83,6 +85,12 @@ export function iconByKind(
       break
     case 'StressChaos':
       icon = <StressIcon />
+      break
+    case 'RedisChaos':
+      icon = <RedisIcon />
+      break
+    case 'EBPFChaos':
+      icon = <EbpfIcon />
       break
     case 'TimeChaos':
     case 'Schedule':

@@ -17,6 +17,8 @@ package clientpool
 
 import (
 	"errors"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"net/http"
 	"strings"
 	"sync"
@@ -36,13 +38,17 @@ var K8sClients Clients
 type Clients interface {
 	Client(token string) (pkgclient.Client, error)
 	AuthClient(token string) (authorizationv1.AuthorizationV1Interface, error)
+	DynamicClient(token string) (dynamic.Interface, error)
+	ClientSet(token string) (kubernetes.Interface, error)
 	Num() int
 	Contains(token string) bool
 }
 
 type LocalClient struct {
-	client     pkgclient.Client
-	authClient authorizationv1.AuthorizationV1Interface
+	client        pkgclient.Client
+	authClient    authorizationv1.AuthorizationV1Interface
+	dynamicClient dynamic.Interface
+	restClient    kubernetes.Interface
 }
 
 func NewLocalClient(localConfig *rest.Config, scheme *runtime.Scheme) (Clients, error) {
@@ -58,9 +64,21 @@ func NewLocalClient(localConfig *rest.Config, scheme *runtime.Scheme) (Clients, 
 		return nil, err
 	}
 
+	dynamicCli, err := dynamic.NewForConfig(localConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	restCli, err := kubernetes.NewForConfig(localConfig)
+	if err != nil {
+		return nil, err
+	}
+
 	return &LocalClient{
-		client:     client,
-		authClient: authCli,
+		client:        client,
+		authClient:    authCli,
+		dynamicClient: dynamicCli,
+		restClient:    restCli,
 	}, nil
 }
 
@@ -71,6 +89,14 @@ func (c *LocalClient) Client(token string) (pkgclient.Client, error) {
 
 func (c *LocalClient) AuthClient(token string) (authorizationv1.AuthorizationV1Interface, error) {
 	return c.authClient, nil
+}
+
+func (c *LocalClient) DynamicClient(token string) (dynamic.Interface, error) {
+	return c.dynamicClient, nil
+}
+
+func (c *LocalClient) ClientSet(token string) (kubernetes.Interface, error) {
+	return c.restClient, nil
 }
 
 // Num returns the num of clients
@@ -87,10 +113,12 @@ func (c *LocalClient) Contains(token string) bool {
 type ClientsPool struct {
 	sync.RWMutex
 
-	scheme      *runtime.Scheme
-	localConfig *rest.Config
-	clients     *lru.Cache
-	authClients *lru.Cache
+	scheme         *runtime.Scheme
+	localConfig    *rest.Config
+	clients        *lru.Cache
+	authClients    *lru.Cache
+	dynamicClients *lru.Cache
+	restClients    *lru.Cache
 }
 
 // New creates a new Clients
@@ -105,11 +133,22 @@ func NewClientPool(localConfig *rest.Config, scheme *runtime.Scheme, maxClientNu
 		return nil, err
 	}
 
+	dynamicClients, err := lru.New(maxClientNum)
+	if err != nil {
+		return nil, err
+	}
+	restClients, err := lru.New(maxClientNum)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ClientsPool{
-		localConfig: localConfig,
-		scheme:      scheme,
-		clients:     clients,
-		authClients: authClients,
+		localConfig:    localConfig,
+		scheme:         scheme,
+		clients:        clients,
+		authClients:    authClients,
+		dynamicClients: dynamicClients,
+		restClients:    restClients,
 	}, nil
 }
 
@@ -176,6 +215,60 @@ func (c *ClientsPool) AuthClient(token string) (authorizationv1.AuthorizationV1I
 	return authCli, nil
 }
 
+func (c *ClientsPool) DynamicClient(token string) (dynamic.Interface, error) {
+	c.Lock()
+	defer c.Unlock()
+
+	if len(token) == 0 {
+		return nil, errors.New("token is empty")
+	}
+
+	value, ok := c.dynamicClients.Get(token)
+	if ok {
+		return value.(dynamic.Interface), nil
+	}
+
+	config := rest.CopyConfig(c.localConfig)
+	config.BearerToken = token
+	config.BearerTokenFile = ""
+
+	dynamicCli, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = c.dynamicClients.Add(token, dynamicCli)
+
+	return dynamicCli, nil
+}
+
+func (c *ClientsPool) ClientSet(token string) (kubernetes.Interface, error) {
+	c.Lock()
+	defer c.Unlock()
+
+	if len(token) == 0 {
+		return nil, errors.New("token is empty")
+	}
+
+	value, ok := c.restClients.Get(token)
+	if ok {
+		return value.(kubernetes.Interface), nil
+	}
+
+	config := rest.CopyConfig(c.localConfig)
+	config.BearerToken = token
+	config.BearerTokenFile = ""
+
+	restCli, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	_ = c.restClients.Add(token, restCli)
+
+	return restCli, nil
+}
+
 // Num returns the num of clients
 func (c *ClientsPool) Num() int {
 	return c.clients.Len()
@@ -210,4 +303,16 @@ func ExtractTokenAndGetClient(header http.Header) (pkgclient.Client, error) {
 func ExtractTokenAndGetAuthClient(header http.Header) (authorizationv1.AuthorizationV1Interface, error) {
 	token := ExtractTokenFromHeader(header)
 	return K8sClients.AuthClient(token)
+}
+
+// ExtractTokenAndGetDynamicClient extracts token from http header, and get the dynamic client
+func ExtractTokenAndGetDynamicClient(header http.Header) (dynamic.Interface, error) {
+	token := ExtractTokenFromHeader(header)
+	return K8sClients.DynamicClient(token)
+}
+
+// ExtractTokenAndGetRestClient extracts token from http header, and get the dynamic client
+func ExtractTokenAndGetRestClient(header http.Header) (kubernetes.Interface, error) {
+	token := ExtractTokenFromHeader(header)
+	return K8sClients.ClientSet(token)
 }

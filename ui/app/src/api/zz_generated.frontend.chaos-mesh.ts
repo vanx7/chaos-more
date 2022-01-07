@@ -3,6 +3,7 @@ import { ExperimentKind } from 'components/NewExperiment/types'
 const mapping = new Map<ExperimentKind, string>([
   ['AWSChaos', 'awsChaos'],
   ['DNSChaos', 'dnsChaos'],
+  ['EBPFChaos', 'ebpfChaos'],
   ['GCPChaos', 'gcpChaos'],
   ['HTTPChaos', 'httpChaos'],
   ['IOChaos', 'ioChaos'],
@@ -11,6 +12,7 @@ const mapping = new Map<ExperimentKind, string>([
   ['NetworkChaos', 'networkChaos'],
   ['PhysicalMachineChaos', 'physicalmachineChaos'],
   ['PodChaos', 'podChaos'],
+  ['RedisChaos', 'redisChaos'],
   ['StressChaos', 'stressChaos'],
   ['TimeChaos', 'timeChaos'],
 ])

@@ -9,7 +9,7 @@ ENV https_proxy $HTTPS_PROXY
 RUN mkdir -p /usr/share/man/man1 /usr/share/man/man2
 
 RUN apt-get update && \
-    apt-get install -y tzdata iptables ebtables net-tools ipset stress-ng iproute2 fuse util-linux procps curl openjdk-11-jre && \
+    apt-get install -y tzdata iptables libpcap-dev ebtables net-tools ipset stress-ng iproute2 fuse util-linux procps curl openjdk-11-jre build-essential wget vim&& \
     rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --set iptables /usr/sbin/iptables-legacy
@@ -42,5 +42,7 @@ RUN case "$TARGET_PLATFORM" in \
     mv /usr/local/bin/libnsenter.so /usr/local/lib/libnsenter.so; \
     curl -L https://github.com/chaos-mesh/rs-tproxy/releases/download/v0.4.5/tproxy-$NSEXEC_ARCH-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin
 
+
+RUN  wget https://go.dev/dl/go1.17.6.linux-amd64.tar.gz && rm -rf /usr/local/go && tar -C /usr/local -xzf go1.17.6.linux-amd64.tar.gz
 COPY bin/chaos-daemon /usr/local/bin/chaos-daemon
 COPY bin/pause /usr/local/bin/pause

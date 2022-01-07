@@ -26,6 +26,7 @@ import (
 const (
 	TypeAWSChaos TemplateType = "AWSChaos"
 	TypeDNSChaos TemplateType = "DNSChaos"
+	TypeEBPFChaos TemplateType = "EBPFChaos"
 	TypeGCPChaos TemplateType = "GCPChaos"
 	TypeHTTPChaos TemplateType = "HTTPChaos"
 	TypeIOChaos TemplateType = "IOChaos"
@@ -34,6 +35,7 @@ const (
 	TypeNetworkChaos TemplateType = "NetworkChaos"
 	TypePhysicalMachineChaos TemplateType = "PhysicalMachineChaos"
 	TypePodChaos TemplateType = "PodChaos"
+	TypeRedisChaos TemplateType = "RedisChaos"
 	TypeStressChaos TemplateType = "StressChaos"
 	TypeTimeChaos TemplateType = "TimeChaos"
 
@@ -43,6 +45,7 @@ var allChaosTemplateType = []TemplateType{
 	TypeSchedule,
 	TypeAWSChaos,
 	TypeDNSChaos,
+	TypeEBPFChaos,
 	TypeGCPChaos,
 	TypeHTTPChaos,
 	TypeIOChaos,
@@ -51,6 +54,7 @@ var allChaosTemplateType = []TemplateType{
 	TypeNetworkChaos,
 	TypePhysicalMachineChaos,
 	TypePodChaos,
+	TypeRedisChaos,
 	TypeStressChaos,
 	TypeTimeChaos,
 
@@ -61,6 +65,8 @@ type EmbedChaos struct {
 	AWSChaos *AWSChaosSpec `json:"awsChaos,omitempty"`
 	// +optional
 	DNSChaos *DNSChaosSpec `json:"dnsChaos,omitempty"`
+	// +optional
+	EBPFChaos *EBPFChaosSpec `json:"ebpfChaos,omitempty"`
 	// +optional
 	GCPChaos *GCPChaosSpec `json:"gcpChaos,omitempty"`
 	// +optional
@@ -78,6 +84,8 @@ type EmbedChaos struct {
 	// +optional
 	PodChaos *PodChaosSpec `json:"podChaos,omitempty"`
 	// +optional
+	RedisChaos *RedisChaosSpec `json:"redisChaos,omitempty"`
+	// +optional
 	StressChaos *StressChaosSpec `json:"stressChaos,omitempty"`
 	// +optional
 	TimeChaos *TimeChaosSpec `json:"timeChaos,omitempty"`
@@ -93,6 +101,10 @@ func (it *EmbedChaos) SpawnNewObject(templateType TemplateType) (GenericChaos, e
 	case TypeDNSChaos:
 		result := DNSChaos{}
 		result.Spec = *it.DNSChaos
+		return &result, nil
+	case TypeEBPFChaos:
+		result := EBPFChaos{}
+		result.Spec = *it.EBPFChaos
 		return &result, nil
 	case TypeGCPChaos:
 		result := GCPChaos{}
@@ -126,6 +138,10 @@ func (it *EmbedChaos) SpawnNewObject(templateType TemplateType) (GenericChaos, e
 		result := PodChaos{}
 		result.Spec = *it.PodChaos
 		return &result, nil
+	case TypeRedisChaos:
+		result := RedisChaos{}
+		result.Spec = *it.RedisChaos
+		return &result, nil
 	case TypeStressChaos:
 		result := StressChaos{}
 		result.Spec = *it.StressChaos
@@ -147,6 +163,9 @@ func (it *EmbedChaos) RestoreChaosSpec(root interface{}) error {
 		return nil
 	case *DNSChaos:
 		*it.DNSChaos = chaos.Spec
+		return nil
+	case *EBPFChaos:
+		*it.EBPFChaos = chaos.Spec
 		return nil
 	case *GCPChaos:
 		*it.GCPChaos = chaos.Spec
@@ -172,6 +191,9 @@ func (it *EmbedChaos) RestoreChaosSpec(root interface{}) error {
 	case *PodChaos:
 		*it.PodChaos = chaos.Spec
 		return nil
+	case *RedisChaos:
+		*it.RedisChaos = chaos.Spec
+		return nil
 	case *StressChaos:
 		*it.StressChaos = chaos.Spec
 		return nil
@@ -191,6 +213,9 @@ func (it *EmbedChaos) SpawnNewList(templateType TemplateType) (GenericChaosList,
 		return &result, nil
 	case TypeDNSChaos:
 		result := DNSChaosList{}
+		return &result, nil
+	case TypeEBPFChaos:
+		result := EBPFChaosList{}
 		return &result, nil
 	case TypeGCPChaos:
 		result := GCPChaosList{}
@@ -216,6 +241,9 @@ func (it *EmbedChaos) SpawnNewList(templateType TemplateType) (GenericChaosList,
 	case TypePodChaos:
 		result := PodChaosList{}
 		return &result, nil
+	case TypeRedisChaos:
+		result := RedisChaosList{}
+		return &result, nil
 	case TypeStressChaos:
 		result := StressChaosList{}
 		return &result, nil
@@ -237,6 +265,14 @@ func (in *AWSChaosList) GetItems() []GenericChaos {
 	return result
 }
 func (in *DNSChaosList) GetItems() []GenericChaos {
+	var result []GenericChaos
+	for _, item := range in.Items {
+		item := item
+		result = append(result, &item)
+	}
+	return result
+}
+func (in *EBPFChaosList) GetItems() []GenericChaos {
 	var result []GenericChaos
 	for _, item := range in.Items {
 		item := item
@@ -301,6 +337,14 @@ func (in *PhysicalMachineChaosList) GetItems() []GenericChaos {
 	return result
 }
 func (in *PodChaosList) GetItems() []GenericChaos {
+	var result []GenericChaos
+	for _, item := range in.Items {
+		item := item
+		result = append(result, &item)
+	}
+	return result
+}
+func (in *RedisChaosList) GetItems() []GenericChaos {
 	var result []GenericChaos
 	for _, item := range in.Items {
 		item := item

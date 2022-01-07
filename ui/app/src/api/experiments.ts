@@ -15,7 +15,7 @@
  *
  */
 
-import { Experiment as ExperimentResponse, ExperimentSingle, StatusOfExperiments } from './experiments.type'
+import { Experiment as ExperimentResponse, ExperimentSingle, ObserveExp, StatusOfExperiments } from './experiments.type'
 
 import { Experiment } from 'components/NewExperiment/types'
 import http from './http'
@@ -45,3 +45,7 @@ export const delMulti = (uuids: uuid[]) => http.delete(`/experiments?uids=${uuid
 
 export const pause = (uuid: uuid) => http.put(`/experiments/pause/${uuid}`)
 export const start = (uuid: uuid) => http.put(`/experiments/start/${uuid}`)
+
+export const log = (uuid: uuid) => http.get<string>(`/experiments/${uuid}/log`)
+
+export const observe = (uuid: uuid) => http.get<ObserveExp>(`/experiments/${uuid}/observe`)

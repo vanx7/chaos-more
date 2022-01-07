@@ -25,7 +25,7 @@ export type KindPhysic =
   | 'DiskChaos'
   | 'JVMChaos'
   | 'ProcessChaos'
-type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'label' | 'autocomplete'
+type FieldType = 'text' | 'textarea' | 'number' | 'select' | 'label' | 'autocomplete' | 'upload'
 interface SpecField {
   field: FieldType
   items?: any[]
@@ -852,6 +852,56 @@ const data: Record<Kind, Definition> = {
             helperText: 'byteman rule configuration',
           },
           ...jvmPort,
+        },
+      },
+    ],
+  },
+  // Redis Attack
+  RedisChaos: {
+    categories: [
+      {
+        name: 'Delay',
+        key: 'redis-delay',
+        spec: {
+          action: 'redis-delay' as any,
+          latency: {
+            field: 'number',
+            label: 'Latency',
+            value: '',
+            helperText: 'Specify the time of latency, unit is millisecond',
+          },
+        },
+      },
+      {
+        name: 'Drop',
+        key: 'redis-drop',
+        spec: {
+          action: 'redis-drop' as any,
+        },
+      },
+      {
+        name: 'Query Empty',
+        key: 'redis-empty-query',
+        spec: {
+          action: 'redis-empty-query' as any,
+        },
+      },
+    ],
+  },
+  // EBPF Attack
+  EBPFChaos: {
+    categories: [
+      {
+        name: 'Customize',
+        key: 'customize',
+        spec: {
+          action: 'action' as any,
+          data: {
+            field: 'upload',
+            label: 'ELF',
+            value: '',
+            helperText: 'You need upload your elf file',
+          },
         },
       },
     ],

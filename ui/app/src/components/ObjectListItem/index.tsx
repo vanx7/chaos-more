@@ -19,6 +19,7 @@ import DateTime, { format } from 'lib/luxon'
 
 import { Archive } from 'api/archives.type'
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined'
+import { CatchingPokemon } from '@mui/icons-material'
 import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import { Experiment } from 'api/experiments.type'
 import Paper from '@ui/mui-extends/esm/Paper'
@@ -45,6 +46,10 @@ const ObjectListItem: React.FC<ObjectListItemProps> = ({ data, type = 'experimen
   const intl = useIntl()
 
   const { lang } = useStoreSelector((state) => state.settings)
+
+  const handleInspect = () => () => {
+    navigate(`/experiments/${data.uid}/inspect`)
+  }
 
   const handleAction = (action: string) => (event: React.MouseEvent<HTMLSpanElement>) => {
     event.stopPropagation()
@@ -134,6 +139,9 @@ const ObjectListItem: React.FC<ObjectListItemProps> = ({ data, type = 'experimen
           <DeleteOutlinedIcon />
         </IconButton>
       )}
+      <IconButton color="primary" title={T('common.inspect', intl)} size="small" onClick={handleInspect()}>
+        <CatchingPokemon />
+      </IconButton>
     </Space>
   )
 
@@ -146,7 +154,7 @@ const ObjectListItem: React.FC<ObjectListItemProps> = ({ data, type = 'experimen
           cursor: 'pointer',
         },
       }}
-      onClick={handleJumpTo}
+      // onClick={handleJumpTo}
     >
       <Box display="flex" justifyContent="space-between" alignItems="center" p={3}>
         <Space direction="row" alignItems="center">

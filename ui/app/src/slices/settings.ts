@@ -21,7 +21,7 @@ export type Theme = 'light' | 'dark'
 
 const initialState = {
   theme: (LS.get('theme') || 'light') as Theme,
-  lang: LS.get('lang') || 'en',
+  lang: LS.get('lang') || 'zh',
   debugMode: LS.get('debug-mode') === 'true',
   enableKubeSystemNS: LS.get('enable-kube-system-ns') === 'true',
 }

@@ -29,6 +29,12 @@ service ChaosDaemon {
   rpc InstallJVMRules(InstallJVMRulesRequest) returns (google.protobuf.Empty) {}
 
   rpc UninstallJVMRules(UninstallJVMRulesRequest) returns (google.protobuf.Empty) {}
+
+  rpc ApplyRedisChaos(RedisRequest) returns (google.protobuf.Empty) {}
+
+  rpc ApplyEBPFChaos(EBPFRequest) returns (google.protobuf.Empty) {}
+
+  rpc CommonObserve(CommonObserveRequest) returns (CommonObserveResponse) {}
 }
 
 message TcHandle {
@@ -257,4 +263,27 @@ message UninstallJVMRulesRequest {
   string rule = 2;
   int32 port = 3;
   bool enterNS = 4;
+}
+
+message CommonObserveRequest {
+  string container_id = 1;
+}
+
+message CommonObserveResponse {
+  repeated string io = 1;
+  repeated string tcp = 2;
+  repeated string func = 3;
+}
+
+message RedisRequest {
+  string container_id = 1;
+  string action = 2;
+  bool load = 3;
+}
+
+message EBPFRequest {
+  string container_id = 1;
+  string action = 2;
+  string data = 3;
+  bool load = 4;
 }

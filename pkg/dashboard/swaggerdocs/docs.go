@@ -2790,6 +2790,11 @@ var doc = `{
                     "type": "object",
                     "$ref": "#/definitions/v1alpha1.DNSChaosSpec"
                 },
+                "ebpfChaos": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1alpha1.EBPFChaosSpec"
+                },
                 "gcpChaos": {
                     "description": "+optional",
                     "type": "object",
@@ -2833,6 +2838,11 @@ var doc = `{
                     "description": "+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1alpha1.PodChaosSpec"
+                },
+                "redisChaos": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1alpha1.RedisChaosSpec"
                 },
                 "schedule": {
                     "type": "string"
@@ -3006,6 +3016,43 @@ var doc = `{
                     "default": "0"
                 },
                 "duplicate": {
+                    "type": "string"
+                }
+            }
+        },
+        "v1alpha1.EBPFChaosSpec": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "description": "Action defines the specific pod ebpf action.",
+                    "type": "string"
+                },
+                "containerNames": {
+                    "description": "ContainerNames indicates list of the name of affected container.\nIf not set, all containers will be injected\n+optional",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "data": {
+                    "description": "Data is ELF 64-bit LSB relocatable, eBPF with base64 encode\nuse it should first decode it with base64",
+                    "type": "string"
+                },
+                "duration": {
+                    "description": "Duration represents the duration of the chaos action.\nIt is required when the action is ` + "`" + `PodFailureAction` + "`" + `.\nA duration string is a possibly signed sequence of\ndecimal numbers, each with optional fraction and a unit suffix,\nsuch as \"300ms\", \"-1.5h\" or \"2h45m\".\nValid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\".\n+optional",
+                    "type": "string"
+                },
+                "mode": {
+                    "description": "Mode defines the mode to run chaos action.\nSupported mode: one / all / fixed / fixed-percent / random-max-percent\n+kubebuilder:validation:Enum=one;all;fixed;fixed-percent;random-max-percent",
+                    "type": "string"
+                },
+                "selector": {
+                    "description": "Selector is used to select pods that are used to inject chaos action.",
+                    "type": "object",
+                    "$ref": "#/definitions/v1alpha1.PodSelectorSpec"
+                },
+                "value": {
+                    "description": "Value is required when the mode is set to ` + "`" + `FixedMode` + "`" + ` / ` + "`" + `FixedPercentMode` + "`" + ` / ` + "`" + `RandomMaxPercentMode` + "`" + `.\nIf ` + "`" + `FixedMode` + "`" + `, provide an integer of pods to do chaos action.\nIf ` + "`" + `FixedPercentMode` + "`" + `, provide a number from 0-100 to specify the percent of pods the server can do chaos action.\nIF ` + "`" + `RandomMaxPercentMode` + "`" + `,  provide a number from 0-100 to specify the max percent of pods to do chaos action\n+optional",
                     "type": "string"
                 }
             }
@@ -4223,6 +4270,43 @@ var doc = `{
                 }
             }
         },
+        "v1alpha1.RedisChaosSpec": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "description": "Action defines the specific redis chaos action.\nSupported action: redis-drop / redis-delay / redis-empty-query\nDefault action: redis-drop\n+kubebuilder:validation:Enum=redis-drop;redis-delay;redis-empty-query",
+                    "type": "string"
+                },
+                "containerNames": {
+                    "description": "ContainerNames indicates list of the name of affected container.\nIf not set, all containers will be injected\n+optional",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "duration": {
+                    "description": "Duration represents the duration of the chaos action.\nIt is required when the action is ` + "`" + `PodFailureAction` + "`" + `.\nA duration string is a possibly signed sequence of\ndecimal numbers, each with optional fraction and a unit suffix,\nsuch as \"300ms\", \"-1.5h\" or \"2h45m\".\nValid time units are \"ns\", \"us\" (or \"µs\"), \"ms\", \"s\", \"m\", \"h\".\n+optional",
+                    "type": "string"
+                },
+                "latency": {
+                    "description": "GracePeriod is used in pod-kill action. It represents the duration in seconds before the pod should be deleted.\nValue must be non-negative integer. The default value is zero that indicates delete immediately.\n+optional",
+                    "type": "integer"
+                },
+                "mode": {
+                    "description": "Mode defines the mode to run chaos action.\nSupported mode: one / all / fixed / fixed-percent / random-max-percent\n+kubebuilder:validation:Enum=one;all;fixed;fixed-percent;random-max-percent",
+                    "type": "string"
+                },
+                "selector": {
+                    "description": "Selector is used to select pods that are used to inject chaos action.",
+                    "type": "object",
+                    "$ref": "#/definitions/v1alpha1.PodSelectorSpec"
+                },
+                "value": {
+                    "description": "Value is required when the mode is set to ` + "`" + `FixedMode` + "`" + ` / ` + "`" + `FixedPercentMode` + "`" + ` / ` + "`" + `RandomMaxPercentMode` + "`" + `.\nIf ` + "`" + `FixedMode` + "`" + `, provide an integer of pods to do chaos action.\nIf ` + "`" + `FixedPercentMode` + "`" + `, provide a number from 0-100 to specify the percent of pods the server can do chaos action.\nIF ` + "`" + `RandomMaxPercentMode` + "`" + `,  provide a number from 0-100 to specify the max percent of pods to do chaos action\n+optional",
+                    "type": "string"
+                }
+            }
+        },
         "v1alpha1.ReorderSpec": {
             "type": "object",
             "properties": {
@@ -4270,6 +4354,11 @@ var doc = `{
                     "type": "object",
                     "$ref": "#/definitions/v1alpha1.DNSChaosSpec"
                 },
+                "ebpfChaos": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1alpha1.EBPFChaosSpec"
+                },
                 "gcpChaos": {
                     "description": "+optional",
                     "type": "object",
@@ -4313,6 +4402,11 @@ var doc = `{
                     "description": "+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1alpha1.PodChaosSpec"
+                },
+                "redisChaos": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1alpha1.RedisChaosSpec"
                 },
                 "schedule": {
                     "type": "string"
@@ -4482,6 +4576,11 @@ var doc = `{
                     "type": "object",
                     "$ref": "#/definitions/v1alpha1.DNSChaosSpec"
                 },
+                "ebpfChaos": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1alpha1.EBPFChaosSpec"
+                },
                 "gcpChaos": {
                     "description": "+optional",
                     "type": "object",
@@ -4524,6 +4623,11 @@ var doc = `{
                     "description": "+optional",
                     "type": "object",
                     "$ref": "#/definitions/v1alpha1.PodChaosSpec"
+                },
+                "redisChaos": {
+                    "description": "+optional",
+                    "type": "object",
+                    "$ref": "#/definitions/v1alpha1.RedisChaosSpec"
                 },
                 "schedule": {
                     "description": "Schedule describe the Schedule(describing scheduled chaos) to be injected with chaos nodes. Only used when Type is TypeSchedule.\n+optional",

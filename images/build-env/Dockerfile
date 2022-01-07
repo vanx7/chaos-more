@@ -10,8 +10,8 @@ ARG HTTP_PROXY
 ENV http_proxy $HTTP_PROXY
 ENV https_proxy $HTTPS_PROXY
 
-RUN apt-get update && \ 
-    apt-get install build-essential curl git pkg-config libfuse-dev fuse -y && \
+RUN apt-get update && \
+    apt-get install build-essential curl git pkg-config libfuse-dev libpcap-dev fuse -y && \
     rm -rf /var/lib/apt/lists/*
 
 # require nodejs >= 12

@@ -271,7 +271,7 @@ image-$(1): $(2)/.dockerbuilt
 
 $(2)/.dockerbuilt:$(image-$(1)-dependencies) $(2)/Dockerfile
 ifeq ($$(IMAGE_$(4)_BUILD),0)
-	docker pull $$($(4)_IMAGE)
+	# docker pull $$($(4)_IMAGE)
 else
 
 ifeq ($(DOCKER_CACHE),1)

@@ -118,6 +118,17 @@ export interface NetworkBandwidth {
   peakrate: number
 }
 
+export interface EBPF {
+  action: string
+  scope: 'node' | 'pod'
+  target: Selector
+}
+
+export interface Redis {
+  action: 'redis-drop' | 'redis-delay' | 'redis-query-empty'
+  target: Selector
+}
+
 export interface Network {
   action: 'partition' | 'loss' | 'delay' | 'duplicate' | 'corrupt' | 'bandwidth'
   loss?: NetworkLoss
@@ -161,6 +172,8 @@ export interface ExperimentType {
   AWSChaos: AWS
   DNSChaos: DNS
   GCPChaos: GCP
+  EBPFChaos: EBPF
+  RedisChaos: Redis
   HTTPChaos?: unknown
   IOChaos: IO
   JVMChaos?: unknown

@@ -108,6 +108,12 @@
       },
       "time": {
         "title": "时钟偏移"
+      },
+      "ebpf": {
+        "title": "eBPF故障"
+      },
+      "redis": {
+        "title": "Redis 故障"
       }
     },
     "run": {
@@ -122,7 +128,9 @@
     "deleteMulti": "归档所选实验",
     "deleteDesc": "你仍然可以在归档中找到此实验",
     "pauseDesc": "你可以在同一位置重启这个实验",
-    "startDesc": "此操作将立即生效"
+    "startDesc": "此操作将立即生效",
+    "inspect": "观测",
+    "operation": "操作台"
   },
   "newS": {
     "title": "新的计划",
@@ -352,7 +360,9 @@
     "use": "使用",
     "using": "使用中",
     "uuid": "UUID",
-    "version": "版本"
+    "version": "版本",
+    "pullLog": "刷新日志",
+    "overview": "概览"
   },
   "table": {
     "created": "创建于"

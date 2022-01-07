@@ -1,0 +1,146 @@
+package main
+
+import (
+	"bytes"
+	"encoding/binary"
+	"errors"
+	"github.com/cilium/ebpf/link"
+	"github.com/cilium/ebpf/perf"
+	"github.com/cilium/ebpf/rlimit"
+	"golang.org/x/sys/unix"
+	"io/ioutil"
+	"log"
+	"net"
+	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
+	"time"
+	"unsafe"
+
+	"fmt"
+	"github.com/cilium/ebpf"
+)
+
+var (
+	binPath = "/bin/bash"
+	symbol  = "readline"
+)
+
+// htons converts the unsigned short integer hostshort from host byte order to network byte order.
+func htons(i uint16) uint16 {
+	b := make([]byte, 2)
+	binary.BigEndian.PutUint16(b, i)
+	return *(*uint16)(unsafe.Pointer(&b[0]))
+}
+
+func sllleeep(test, second, third string) {
+	for {
+		time.Sleep(5 * time.Second)
+		log.Println(test)
+		_, _ = net.LookupHost("baidu.com")
+		t := time.Now()
+		fn := strconv.Itoa(int(t.UnixNano()))
+		ioutil.WriteFile(fn, []byte{}, 0644)
+		os.Remove(fn)
+	}
+}
+
+func main() {
+	var pid int
+	var err error
+	if len(os.Args) >= 2 {
+		pid, _ = strconv.Atoi(os.Args[1])
+	}
+	if pid == 0 {
+		pid = os.Getpid()
+	}
+	const SO_ATTACH_BPF = 50
+	f := "/tmp/hello.o"
+
+	coll, err := ebpf.LoadCollection(f)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("collection %+v \n", coll)
+	// Allow the current process to lock memory for eBPF resources.
+	if err := rlimit.RemoveMemlock(); err != nil {
+		log.Fatal(err)
+	}
+	var prog *ebpf.Program
+	var ebpfMap *ebpf.Map
+	var name string
+	for _, p := range coll.Programs {
+		prog = p
+	}
+	for n, m := range coll.Maps {
+		ebpfMap = m
+		name = n
+	}
+	defer prog.Close()
+	defer ebpfMap.Close()
+
+	fmt.Printf("prog type: %s\n", prog.Type())
+	fmt.Printf("map type: %s, name: %s fd: %d\n", ebpfMap.String(), name, ebpfMap.FD())
+
+	stopper := make(chan os.Signal, 1)
+	signal.Notify(stopper, os.Interrupt, syscall.SIGTERM)
+
+	ex, err := link.OpenExecutable(binPath)
+	if err != nil {
+		log.Fatalf("opening executable: %s", err)
+	}
+
+	up, err := ex.Uretprobe(symbol, prog, nil)
+	if err != nil {
+		log.Fatalf("creating uretprobe: %s", err)
+	}
+	defer up.Close()
+
+	rd, err := perf.NewReader(ebpfMap, os.Getpagesize())
+	if err != nil {
+		log.Fatalf("error while creating ringbuffer reader: %v", err)
+	}
+
+	go func() {
+		<-stopper
+		rd.Close()
+	}()
+
+	go sllleeep("Hello from hackathon!", "second hello", "third hello")
+
+	log.Println("Waiting for events..")
+	type Event struct {
+		PID  uint32
+		Line [80]byte
+	}
+	var event Event
+
+	for {
+		record, err := rd.Read()
+		if err != nil {
+			if errors.Is(err, perf.ErrClosed) {
+				log.Println("Received signal, exiting..")
+				return
+			}
+			log.Printf("reading from reader: %s", err)
+			continue
+		}
+
+		if record.LostSamples != 0 {
+			log.Printf("perf event ring buffer full, dropped %d samples", record.LostSamples)
+			continue
+		}
+
+		// Parse the perf event entry into an Event structure.
+		if err := binary.Read(bytes.NewBuffer(record.RawSample), binary.LittleEndian, &event); err != nil {
+			log.Printf("parsing perf event: %s", err)
+			continue
+		}
+
+		log.Printf("%s:%s return value: %s", binPath, symbol, unix.ByteSliceToString(event.Line[:]))
+
+	}
+
+}
+

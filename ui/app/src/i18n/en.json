@@ -109,6 +109,12 @@
       },
       "time": {
         "title": "Clock Skew"
+      },
+      "ebpf": {
+        "title": "eBPF Fault"
+      },
+      "redis": {
+        "title": "Redis Fault"
       }
     },
     "run": {
@@ -124,7 +130,9 @@
     "deleteMulti": "Archive selected experiments",
     "deleteDesc": "You can still find this experiment in the archives",
     "pauseDesc": "You can restart the experiment in the same position",
-    "startDesc": "The operation will take effect immediately"
+    "startDesc": "The operation will take effect immediately",
+    "inspect": "Inspect",
+    "operation": "Operation"
   },
   "newW": {
     "title": "New Workflow",
@@ -352,7 +360,9 @@
     "use": "Use",
     "using": "Using",
     "uuid": "UUID",
-    "version": "Version"
+    "version": "Version",
+    "pullLog": "Sync",
+    "overview": "Overview"
   },
   "table": {
     "created": "Created at"

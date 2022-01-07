@@ -16,6 +16,8 @@
 package chaosimpl
 
 import (
+	"github.com/chaos-mesh/chaos-mesh/controllers/chaosimpl/ebpfchaos"
+	"github.com/chaos-mesh/chaos-mesh/controllers/chaosimpl/redischaos"
 	"go.uber.org/fx"
 
 	"github.com/chaos-mesh/chaos-mesh/controllers/chaosimpl/awschaos"
@@ -46,5 +48,6 @@ var AllImpl = fx.Options(
 	jvmchaos.Module,
 	timechaos.Module,
 	physicalmachinechaos.Module,
-
+	ebpfchaos.Module,
+	redischaos.Module,
 	utils.Module)

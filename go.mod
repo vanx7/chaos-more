@@ -15,6 +15,7 @@ require (
 	github.com/bxcodec/faker v2.0.1+incompatible
 	github.com/chaos-mesh/chaos-mesh/api/v1alpha1 v0.0.0
 	github.com/chaos-mesh/k8s_dns_chaos v0.2.0
+	github.com/cilium/ebpf v0.7.0
 	github.com/containerd/cgroups v1.0.2-0.20210605143700-23b51209bf7b
 	github.com/containerd/containerd v1.5.1
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
@@ -30,7 +31,9 @@ require (
 	github.com/go-playground/validator/v10 v10.4.1
 	github.com/go-test/deep v1.0.8 // indirect
 	github.com/golang/protobuf v1.5.2
+	github.com/google/gopacket v1.1.19
 	github.com/gorilla/mux v1.8.0 // indirect
+	github.com/gorilla/websocket v1.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
@@ -58,6 +61,7 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
@@ -73,6 +77,7 @@ require (
 	go.uber.org/zap v1.18.1
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/sys v0.0.0-20210906170528-6f6e22806c34
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac
 	golang.org/x/tools v0.1.4
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1

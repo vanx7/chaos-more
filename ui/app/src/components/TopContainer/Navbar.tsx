@@ -14,8 +14,9 @@
  * limitations under the License.
  *
  */
-import { AppBar, Box, Breadcrumbs, IconButton, Toolbar, Typography } from '@mui/material'
+import { AppBar, Box, Breadcrumbs, IconButton, MenuItem, Select, Toolbar, Typography } from '@mui/material'
 
+import LS from 'lib/localStorage'
 import MenuIcon from '@mui/icons-material/Menu'
 import MenuOpenIcon from '@mui/icons-material/MenuOpen'
 import Namespace from './Namespace'
@@ -24,6 +25,7 @@ import Search from 'components/Search'
 import Space from '@ui/mui-extends/esm/Space'
 import T from 'components/T'
 import { makeStyles } from '@mui/styles'
+import { useState } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   toolbar: {
@@ -57,7 +59,6 @@ const Navbar: React.FC<HeaderProps> = ({ openDrawer, handleDrawerToggle, breadcr
   const classes = useStyles()
 
   const b = breadcrumbs[0] // first breadcrumb
-
   return (
     <>
       <Toolbar sx={{ my: 6 }} />
